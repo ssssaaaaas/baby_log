@@ -1,5 +1,6 @@
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:material_symbols_icons/material_symbols_icons.dart';
 import 'HomePage.dart';
 import 'Community.dart';
 import 'Diary.dart';
@@ -34,9 +35,10 @@ class _navigationBarState extends State<navigationBar> {
       ),
       bottomNavigationBar: Container(
         decoration: const BoxDecoration(
+          color: Colors.white,
           borderRadius: BorderRadius.only(
-            topLeft: Radius.circular(25),
-            topRight: Radius.circular(25),
+            topLeft: Radius.circular(23),
+            topRight: Radius.circular(23),
           ),
           boxShadow: [
             BoxShadow(
@@ -48,28 +50,30 @@ class _navigationBarState extends State<navigationBar> {
         ),
         child: ClipRRect(
           borderRadius: const BorderRadius.only(
-            topLeft: Radius.circular(25),
-            topRight: Radius.circular(25),
+            topLeft: Radius.circular(23),
+            topRight: Radius.circular(23),
           ),
-          child:  Theme(
+          child: Theme(
             data: Theme.of(context).copyWith(
               splashFactory: NoSplash.splashFactory,
               highlightColor: Colors.transparent,
+            
             ),
             child: BottomNavigationBar(
             backgroundColor: Colors.white,
             type: BottomNavigationBarType.fixed,
-            unselectedFontSize: 11,
-            selectedFontSize: 11,
+            unselectedFontSize: 10,
+            selectedFontSize: 10,
             unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.bold),
+            selectedLabelStyle: const TextStyle(fontWeight: FontWeight.bold),
             items: const [
               BottomNavigationBarItem(icon: Icon(Icons.home_filled), label: '홈'),
-              BottomNavigationBarItem(icon: Icon(Icons.message), label: '커뮤니티'),
-              BottomNavigationBarItem(icon: Icon(Icons.calendar_month), label: '일기')
+              BottomNavigationBarItem(icon: Icon(Icons.people_alt_outlined), label: '커뮤니티'),
+              BottomNavigationBarItem(icon: Icon(Symbols.child_care), label: '기록')
             ],
             currentIndex: _selectedIndex,
-            unselectedItemColor: const Color(0XFFD2D6DA),
-            selectedItemColor: Colors.black,
+            unselectedItemColor: const Color(0XFFB1B8C0),
+            selectedItemColor: const Color(0XFFFF9C27),
             onTap: _onItemTapped,
             ),
           ),
