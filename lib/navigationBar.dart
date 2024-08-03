@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:material_symbols_icons/material_symbols_icons.dart';
-import 'HomePage.dart';
-import 'Community.dart';
-import 'Diary.dart';
+import 'Homepage/HomePage.dart';
+import 'Community/Community.dart';
+import 'Mypage/MyPage.dart';
+import 'Diary/Calendar.dart';
 
 class navigationBar extends StatefulWidget {
   const navigationBar({super.key});
@@ -17,8 +17,9 @@ class _navigationBarState extends State<navigationBar> {
  
   final List<Widget> _widgetOptions = <Widget>[
     const HomePage(),
-    const Community(),
-    const Diary(),
+    Community(),
+    Calendar(),
+    const MyPage(),
   ];
 
   void _onItemTapped(int index) {
@@ -69,7 +70,8 @@ class _navigationBarState extends State<navigationBar> {
             items: const [
               BottomNavigationBarItem(icon: Icon(Icons.home_filled), label: '홈'),
               BottomNavigationBarItem(icon: Icon(Icons.people_alt_outlined), label: '커뮤니티'),
-              BottomNavigationBarItem(icon: Icon(Symbols.child_care), label: '기록')
+              BottomNavigationBarItem(icon: Icon(Symbols.child_care), label: '기록'),
+              BottomNavigationBarItem(icon: Icon(Icons.person_pin), label: '마이페이지')
             ],
             currentIndex: _selectedIndex,
             unselectedItemColor: const Color(0XFFB1B8C0),
