@@ -45,29 +45,54 @@ class _DiaryPageState extends State<DiaryPage> {
 
   void _save() {
     widget.onSave(_image, _noteController.text);
-    Navigator.pop(context);
+    _showCustomSnackbar();
+  }
+
+  void _showCustomSnackbar() {
+    final scaffoldMessenger = ScaffoldMessenger.of(context);
+    final snackbar = SnackBar(
+      content: Container(
+        width: double.infinity,
+        color: Color(0XFFFFDCB2),
+        padding: EdgeInsets.symmetric(vertical: 10),
+        child: Center(
+          child: Text(
+            '저장되었습니다!',
+            style: TextStyle(color: Colors.black, fontSize: 16),
+          ),
+        ),
+      ),
+      behavior: SnackBarBehavior.floating,
+      backgroundColor: Color(0XFFFFDCB2),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(8),
+      ),
+      elevation: 0,
+      duration: Duration(seconds: 1),
+    );
+
+    scaffoldMessenger.showSnackBar(snackbar);
   }
 
   @override
   Widget build(BuildContext context) {
-
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
         leading: IconButton(
           onPressed: () {
             Navigator.pop(
-              context, 
+              context,
               MaterialPageRoute(builder: (context) => Calendar()),
             );
-          }, 
-          icon: Icon(CupertinoIcons.xmark)
+          },
+          icon: Icon(CupertinoIcons.xmark),
         ),
         title: Center(
           child: Text(
-          DateFormat('yyyy년 M월').format(widget.date),
-          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-        ),
+            DateFormat('yyyy년 M월').format(widget.date),
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+          ),
         ),
         actions: [
           IconButton(
@@ -138,7 +163,7 @@ class _DiaryPageState extends State<DiaryPage> {
               ],
             ),
             SizedBox(height: 20),
-            if(_image != null) Image(image: _image!.image)
+            if (_image != null) Image(image: _image!.image),
           ],
         ),
       ),
