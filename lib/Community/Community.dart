@@ -5,10 +5,12 @@ class Community extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Text('일기'),
-      ],
+    return Scaffold(
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        title: Text('커뮤니티'),
+      ),
+      backgroundColor: Colors.white,
     );
   }
 }
