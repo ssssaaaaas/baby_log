@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/material_symbols_icons.dart';
 import 'Homepage/HomePage.dart';
-import 'Community/Community.dart';
+import 'Community/CommunityPage.dart';
 import 'Mypage/MyPage.dart';
 import 'Diary/Calendar.dart';
 
@@ -17,7 +17,7 @@ class _navigationBarState extends State<navigationBar> {
  
   final List<Widget> _widgetOptions = <Widget>[
     const HomePage(),
-    Community(),
+    CommunityPage(),
     Calendar(),
     const MyPage(),
   ];
