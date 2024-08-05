@@ -60,6 +60,11 @@ class _CalendarState extends State<Calendar> {
               };
             });
           },
+          onDelete: () {
+            setState(() {
+              _dateEntries.remove(date);
+            });
+          },
         ),
       ),
     );
