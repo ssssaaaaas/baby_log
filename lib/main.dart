@@ -18,7 +18,8 @@ class MyApp extends StatelessWidget {
     return const MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'Baby_Log',
-      home: Splash1(),
+      home: navigationBar(),
+      //home: Splash1(),
     );
   }
 }

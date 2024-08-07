@@ -45,30 +45,31 @@ class _CalendarState extends State<Calendar> {
   }
 
   void _selectDate(DateTime date) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => DiaryPage(
-          date: date,
-          initialImage: _dateEntries[date]?['image'],
-          initialNote: _dateEntries[date]?['note'],
-          onSave: (image, note) {
-            setState(() {
-              _dateEntries[date] = {
-                'image': image,
-                'note': note,
-              };
-            });
-          },
-          onDelete: () {
-            setState(() {
-              _dateEntries.remove(date);
-            });
-          },
-        ),
+  Navigator.push(
+    context,
+    MaterialPageRoute(
+      builder: (context) => DiaryPage(
+        date: date,
+        initialImage: _dateEntries[date]?['image'],  // Pass the image here
+        initialNote: _dateEntries[date]?['note'],
+        onSave: (image, note) {
+          setState(() {
+            _dateEntries[date] = {
+              'image': image,
+              'note': note,
+            };
+          });
+        },
+        onDelete: () {
+          setState(() {
+            _dateEntries.remove(date);
+          });
+        },
       ),
-    );
-  }
+    ),
+  );
+}
+
 
   @override
   Widget build(BuildContext context) {

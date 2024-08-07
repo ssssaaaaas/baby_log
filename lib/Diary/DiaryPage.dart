@@ -1,22 +1,21 @@
 import 'dart:io';
-import 'package:baby_log/Diary/UploadImage.dart';
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:material_symbols_icons/symbols.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:intl/intl.dart';
+import 'firestore_service.dart';
 
 class DiaryPage extends StatefulWidget {
   final DateTime date;
-  final Image? initialImage;
   final String? initialNote;
+  final Image? initialImage;  // Add this line
   final void Function(Image? image, String note) onSave;
   final VoidCallback onDelete;
 
   DiaryPage({
     required this.date,
-    this.initialImage,
     this.initialNote,
+    this.initialImage,  // Add this line
     required this.onSave,
     required this.onDelete,
   });
@@ -26,18 +25,18 @@ class DiaryPage extends StatefulWidget {
 }
 
 class _DiaryPageState extends State<DiaryPage> {
-  late Image? _image;
+  Image? _image;
   late TextEditingController _noteController;
   final ImagePicker _picker = ImagePicker();
-  double _imageHeight = 200;
+  final FirestoreService _firestoreService = FirestoreService();
   bool _isSaved = false;
   bool _isEditing = false;
 
   @override
   void initState() {
     super.initState();
-    _image = widget.initialImage;
     _noteController = TextEditingController(text: widget.initialNote);
+    _image = widget.initialImage;  // Initialize _image with widget.initialImage
   }
 
   Future<void> _pickImage() async {
@@ -49,7 +48,14 @@ class _DiaryPageState extends State<DiaryPage> {
     }
   }
 
-  void _save() {
+  Future<void> _save() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      // Handle the case when user is not logged in
+      return;
+    }
+    final uid = user.uid;
+    await _firestoreService.saveUserData(uid, _noteController.text);
     widget.onSave(_image, _noteController.text);
     setState(() {
       _isSaved = true;
@@ -66,7 +72,7 @@ class _DiaryPageState extends State<DiaryPage> {
   }
 
   void _showBottomSheet() {
-    if (!_isSaved) return; // 저장되지 않은 경우 바텀시트 표시하지 않음
+    if (!_isSaved) return;
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
@@ -74,16 +80,13 @@ class _DiaryPageState extends State<DiaryPage> {
         return Container(
           decoration: BoxDecoration(
             color: Color(0XFFFFF4E7),
-            borderRadius: BorderRadius.vertical(
-              top: Radius.circular(8),
-              bottom: Radius.circular(8),
-            ),
+            borderRadius: BorderRadius.vertical(top: Radius.circular(8)),
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: <Widget>[
               _buildBottomSheetTile(
-                icon: Symbols.edit,
+                icon: Icons.edit,
                 text: '수정',
                 onTap: () {
                   Navigator.pop(context);
@@ -92,7 +95,7 @@ class _DiaryPageState extends State<DiaryPage> {
               ),
               Divider(color: Color(0XFFEEE5DA)),
               _buildBottomSheetTile(
-                icon: CupertinoIcons.delete,
+                icon: Icons.delete,
                 text: '삭제',
                 onTap: () {
                   Navigator.pop(context);
@@ -124,10 +127,7 @@ class _DiaryPageState extends State<DiaryPage> {
       height: 50,
       decoration: BoxDecoration(
         color: isCancel ? Colors.transparent : Color(0XFFFFF4E7),
-        borderRadius: BorderRadius.vertical(
-          top: Radius.circular(8),
-          bottom: Radius.circular(8),
-        ),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(8)),
       ),
       child: Material(
         color: Colors.transparent,
@@ -180,7 +180,7 @@ class _DiaryPageState extends State<DiaryPage> {
               onPressed: () {
                 widget.onDelete();
                 Navigator.of(context).pop();
-                Navigator.pop(context); // 달력 페이지로 돌아가기
+                Navigator.pop(context);
               },
               child: Text(
                 '예',
@@ -269,7 +269,7 @@ class _DiaryPageState extends State<DiaryPage> {
                     if (_isSaved)
                       IconButton(
                         onPressed: _showBottomSheet,
-                        icon: Icon(CupertinoIcons.ellipsis),
+                        icon: Icon(Icons.more_vert),
                       ),
                   ],
                 ),
@@ -285,7 +285,7 @@ class _DiaryPageState extends State<DiaryPage> {
                   children: <Widget>[
                     TextField(
                       controller: _noteController,
-                      cursorColor: Color(0XFFFFDCB2),
+                      cursorColor: Color(0XFFFF9C27),
                       decoration: InputDecoration(
                         border: InputBorder.none,
                         hintText: '소중한 추억을 기록하세요...',
@@ -294,36 +294,23 @@ class _DiaryPageState extends State<DiaryPage> {
                       maxLines: null,
                     ),
                     SizedBox(height: 10),
-                    if (_image != null)
-                      Column(
-                        children: [
-                          ConstrainedBox(
-                            constraints: BoxConstraints(
-                              maxHeight: _imageHeight,
+                    GestureDetector(
+                      onTap: _pickImage,
+                      child: Container(
+                        height: 200,
+                        color: Colors.grey[200],
+                        child: Stack(
+                          children: [
+                            if (_image != null)
+                              _image!,
+                            Positioned(
+                              bottom: 8,
+                              right: 8,
+                              child: Icon(Icons.camera_alt_outlined, color: Colors.grey[600], size: 30),
                             ),
-                            child: _image,
-                          ),
-                          Slider(
-                            value: _imageHeight,
-                            min: 100,
-                            max: 400,
-                            divisions: 10,
-                            label: 'Image Height',
-                            onChanged: (double value) {
-                              setState(() {
-                                _imageHeight = value;
-                              });
-                            },
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
-                    SizedBox(height: 10),
-                    UploadImage(
-                      onPickImage: (image) {
-                        setState(() {
-                          _image = image as Image?;
-                        });
-                      },
                     ),
                   ],
                 ),

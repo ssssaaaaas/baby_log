@@ -1,8 +1,7 @@
-//게시물
+import 'dart:typed_data';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
-import 'dart:io';
 
 class PostForm extends StatefulWidget {
   final String? postId;
@@ -19,7 +18,7 @@ class _PostFormState extends State<PostForm> {
   final _contentController = TextEditingController();
   String? _selectedType;
   final List<String> _categories = ['자유로그', '질문로그', '꿀팁로그', '자랑로그'];
-  File? _image;
+  Uint8List? _image;
 
   @override
   void initState() {
@@ -33,76 +32,51 @@ class _PostFormState extends State<PostForm> {
         _titleController.text = doc['title'];
         _contentController.text = doc['content'];
         _selectedType = doc['type'];
-        if (doc['image'] != null) {
-          setState(() {
-            _image = File(doc['image']);
-          });
-        }
       });
     } else {
       _selectedType = widget.initialType ?? _categories.first;
     }
   }
 
-  Future<void> _pickImage() async {
-    final picker = ImagePicker();
-    final pickedFile = await picker.pickImage(source: ImageSource.gallery);
-
-    if (pickedFile != null) {
-      setState(() {
-        _image = File(pickedFile.path);
-      });
-    }
-  }
-
-  void _savePost() async {
+  void _savePost() {
     final title = _titleController.text;
     final content = _contentController.text;
 
     if (_selectedType == null || title.isEmpty || content.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Container(
-            width: double.infinity,
-            color: Color(0XFFFFDCB2),
-            padding: EdgeInsets.symmetric(vertical: 10),
-            child: Center(
-              child: Text(
-                '모든 필드를 채워주세요!',
-                style: TextStyle(color: Colors.black, fontSize: 16),
-              ),
-            ),
-          ),
-          behavior: SnackBarBehavior.floating,
-          backgroundColor: Color(0XFFFFDCB2),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(8),
-          ),
-          elevation: 0,
-          duration: Duration(seconds: 1),
-        ),
+        SnackBar(content: Text('모든 필드를 채워주세요')),
       );
       return;
     }
 
-    final postData = {
-      'title': title,
-      'content': content,
-      'type': _selectedType,
-      'createdAt': Timestamp.now(),
-    };
-
-    if (_image != null) {
-      postData['image'] = _image!.path;
-    }
-
     if (widget.postId == null) {
-      FirebaseFirestore.instance.collection('posts').add(postData);
+      FirebaseFirestore.instance.collection('posts').add({
+        'title': title,
+        'content': content,
+        'type': _selectedType,
+        'createdAt': Timestamp.now(),
+        'image': _image,
+      });
     } else {
-      FirebaseFirestore.instance.collection('posts').doc(widget.postId).update(postData);
+      FirebaseFirestore.instance.collection('posts').doc(widget.postId).update({
+        'title': title,
+        'content': content,
+        'type': _selectedType,
+        'image': _image,
+      });
     }
 
     Navigator.of(context).pop();
+  }
+
+  Future<void> _pickImage() async {
+    final image = await ImagePicker().pickImage(source: ImageSource.gallery);
+    if (image != null) {
+      final bytes = await image.readAsBytes();
+      setState(() {
+        _image = bytes;
+      });
+    }
   }
 
   @override
@@ -118,7 +92,7 @@ class _PostFormState extends State<PostForm> {
         ),
         title: Center(
           child: Text(
-            '새 게시물',
+            '글 쓰기',
             style: TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.w700,
@@ -160,7 +134,7 @@ class _PostFormState extends State<PostForm> {
                   backgroundColor: Colors.white,
                   selectedColor: const Color(0XFFFF9C27),
                   side: BorderSide(color: Color(0XFFFF9C27)),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(11)),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                   selected: _selectedType == category,
                   onSelected: (selected) {
                     setState(() {
@@ -171,21 +145,30 @@ class _PostFormState extends State<PostForm> {
               }).toList(),
             ),
             SizedBox(height: 20),
-            if (_selectedType == '자랑로그')
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  _image != null
-                      ? Image.file(_image!)
-                      : Text('사진을 선택하세요'),
-                  SizedBox(height: 10),
-                  ElevatedButton(
-                    onPressed: _pickImage,
-                    child: Text('사진 선택'),
+            if (_selectedType == '자랑로그') ...[
+              GestureDetector(
+                onTap: _pickImage,
+                child: Container(
+                  height: 200,
+                  color: Colors.grey[200],
+                  child: Stack(
+                    children: [
+                      if (_image != null)
+                        Image.memory(_image!, fit: BoxFit.cover, width: double.infinity, height: double.infinity),
+                      Positioned(
+                        bottom: 8,
+                        right: 8,
+                        child: Icon(Icons.camera_alt_outlined, color: Colors.grey[600], size: 30),
+                      ),
+                    ],
                   ),
-                  SizedBox(height: 20),
-                ],
+                ),
               ),
+              Divider(
+                thickness: 2,
+                color: Color(0XFFF2F3F5),
+              ),
+            ],
             TextField(
               controller: _titleController,
               cursorColor: Color(0XFFFFDCB2),
@@ -200,7 +183,11 @@ class _PostFormState extends State<PostForm> {
               ),
               maxLines: 1,
             ),
-            Divider(thickness: 2, color: Color(0XFFF2F3F5)),
+            if (_selectedType != '자랑로그')
+              Divider(
+                thickness: 2,
+                color: Color(0XFFF2F3F5),
+              ),
             TextField(
               controller: _contentController,
               cursorColor: Color(0XFFFFDCB2),
