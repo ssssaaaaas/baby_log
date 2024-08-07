@@ -28,22 +28,13 @@ class _UploadImageState extends State<UploadImage> {
 
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: Container(
-        color: Colors.grey[300],
-        height: 400,
-        width: 400,
-        child: (file != null)
-            ? Image.memory(
-                file!,
-                fit: BoxFit.cover,
-              )
-            : IconButton(
-                onPressed: _pickImage,
-                icon: Icon(Icons.image),
-                iconSize: 50,
-                color: Colors.white,
-              ),
+    return Align(
+      alignment: Alignment.bottomRight,
+      child: IconButton(
+        onPressed: _pickImage,
+        icon: Icon(Icons.image),
+        iconSize: 30,
+        color: Colors.grey[400],
       ),
     );
   }

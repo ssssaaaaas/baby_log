@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
 class PostDetailScreen extends StatelessWidget {
@@ -10,9 +11,23 @@ class PostDetailScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('게시글 상세'),
+        backgroundColor: Colors.white,
+        leading: IconButton(
+          onPressed: () {
+            Navigator.pop(context, 'fromPostDetailScreen');
+          },
+          icon: Icon(Icons.arrow_back_ios, color: Color(0XFF1C1B1F)),
+        ),
+        actions: [
+          IconButton(
+            icon: Icon(CupertinoIcons.ellipsis_vertical),
+            onPressed: () {},
+          ),
+        ],
       ),
+      backgroundColor: Colors.white,
       body: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           StreamBuilder<DocumentSnapshot>(
             stream: FirebaseFirestore.instance.collection('posts').doc(postId).snapshots(),
@@ -30,14 +45,26 @@ class PostDetailScreen extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(post['title'], style: TextStyle(fontSize: 24)),
+                    Text(
+                      post['title'],
+                      style: TextStyle(
+                        fontSize: 21,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                     SizedBox(height: 10),
-                    Text(post['content']),
+                    Text(
+                      post['content'],
+                      style: TextStyle(
+                        fontSize: 16,
+                      ),
+                    ),
                   ],
                 ),
               );
             },
           ),
+          Divider(thickness: 2, color: Color(0XFFF2F3F5)),
           Expanded(
             child: StreamBuilder<QuerySnapshot>(
               stream: FirebaseFirestore.instance
@@ -59,7 +86,12 @@ class PostDetailScreen extends StatelessWidget {
                   itemBuilder: (context, index) {
                     final comment = comments[index];
                     return ListTile(
-                      title: Text(comment['content']),
+                      title: Text(
+                        comment['content'],
+                        style: TextStyle(
+                          fontSize: 16,
+                        ),
+                      ),
                     );
                   },
                 );
@@ -75,7 +107,12 @@ class PostDetailScreen extends StatelessWidget {
                   'createdAt': Timestamp.now(),
                 });
               },
-              decoration: InputDecoration(labelText: '답글을 작성하세요'),
+              decoration: InputDecoration(
+                labelText: '답글을 작성하세요',
+                labelStyle: TextStyle(
+                  fontSize: 16,
+                ),
+              ),
             ),
           ),
         ],

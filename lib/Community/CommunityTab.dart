@@ -1,6 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
-import 'PostDetailScreen.dart';
 
 class CommunityTab extends StatelessWidget {
   final String tabType;
@@ -23,25 +22,53 @@ class CommunityTab extends StatelessWidget {
         }
 
         final posts = snapshot.data!.docs;
-        return ListView.builder(
+        return ListView.separated(
           itemCount: posts.length,
+          separatorBuilder: (context, index) => Divider(thickness: 2, color: Color(0XFFF2F3F5)),
           itemBuilder: (context, index) {
             final post = posts[index];
-            return ListTile(
-              title: Text(post['title']),
-              subtitle: Text(post['content']),
-              trailing: IconButton(
-                icon: Icon(Icons.delete),
-                onPressed: () {
-                  FirebaseFirestore.instance.collection('posts').doc(post.id).delete();
-                },
+            return Container(
+              padding: EdgeInsets.all(16.0),
+              color: Colors.white,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    post['title'],
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  SizedBox(height: 8),
+                  Text(
+                    post['content'],
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis, // 넘칠 경우 '...' 표시
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w400,
+                    ),
+                  ),
+                  SizedBox(height: 8),
+                  Row(
+                    children: [
+                      IconButton(
+                        icon: Icon(Icons.favorite_border),
+                        onPressed: () {},
+                      ),
+                      IconButton(
+                        icon: Icon(Icons.comment),
+                        onPressed: () {},
+                      ),
+                      IconButton(
+                        icon: Icon(Icons.share),
+                        onPressed: () {},
+                      ),
+                    ],
+                  ),
+                ],
               ),
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => PostDetailScreen(postId: post.id)),
-                );
-              },
             );
           },
         );

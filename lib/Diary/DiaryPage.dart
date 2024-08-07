@@ -66,7 +66,7 @@ class _DiaryPageState extends State<DiaryPage> {
   }
 
   void _showBottomSheet() {
-    if (!_isSaved) return; // 저장되지 않은 경우 아래 시트 표시하지 않음
+    if (!_isSaved) return; // 저장되지 않은 경우 바텀시트 표시하지 않음
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
