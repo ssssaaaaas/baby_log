@@ -69,9 +69,9 @@ class _navigationBarState extends State<navigationBar> {
             selectedLabelStyle: const TextStyle(fontWeight: FontWeight.bold),
             items: const [
               BottomNavigationBarItem(icon: Icon(Icons.home_filled), label: '홈'),
-              BottomNavigationBarItem(icon: Icon(Icons.people_alt_outlined), label: '커뮤니티'),
+              BottomNavigationBarItem(icon: Icon(Icons.forum_outlined), label: '커뮤니티'),
               BottomNavigationBarItem(icon: Icon(Symbols.child_care), label: '기록'),
-              BottomNavigationBarItem(icon: Icon(Icons.person_pin), label: '마이페이지')
+              BottomNavigationBarItem(icon: Icon(Icons.person_2_outlined), label: '마이페이지')
             ],
             currentIndex: _selectedIndex,
             unselectedItemColor: const Color(0XFFB1B8C0),

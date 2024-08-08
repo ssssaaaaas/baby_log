@@ -1,7 +1,10 @@
 import 'dart:typed_data';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'likes.dart';
+import 'comments.dart';
 
 class PostForm extends StatefulWidget {
   final String? postId;
@@ -19,28 +22,46 @@ class _PostFormState extends State<PostForm> {
   String? _selectedType;
   final List<String> _categories = ['자유로그', '질문로그', '꿀팁로그', '자랑로그'];
   Uint8List? _image;
+  bool _isFavorited = false;
+  int _favoriteCount = 0;
+  final ScrollController _scrollController = ScrollController();
+  final FocusNode _commentFocusNode = FocusNode();
+
+  late LikeService _likeService;
+  late CommentService _commentService;
 
   @override
   void initState() {
     super.initState();
     if (widget.postId != null) {
-      FirebaseFirestore.instance
-          .collection('posts')
-          .doc(widget.postId)
-          .get()
-          .then((doc) {
+      _likeService = LikeService(widget.postId!, "현재 사용자 ID");
+      _commentService = CommentService(widget.postId!);
+
+      FirebaseFirestore.instance.collection('posts').doc(widget.postId).get().then((doc) {
         _titleController.text = doc['title'];
         _contentController.text = doc['content'];
         _selectedType = doc['type'];
+        _updateFavoriteCountAndStatus();
       });
     } else {
       _selectedType = widget.initialType ?? _categories.first;
     }
   }
 
+  void _updateFavoriteCountAndStatus() async {
+    final likeCount = await _likeService.getFavoriteCount();
+    final isLiked = await _likeService.isFavorited();
+
+    setState(() {
+      _favoriteCount = likeCount;
+      _isFavorited = isLiked;
+    });
+  }
+
   void _savePost() {
     final title = _titleController.text;
     final content = _contentController.text;
+    _showCustomSnackbar();
 
     if (_selectedType == null || title.isEmpty || content.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -56,6 +77,7 @@ class _PostFormState extends State<PostForm> {
         'type': _selectedType,
         'createdAt': Timestamp.now(),
         'image': _image,
+        'likes': _favoriteCount,
       });
     } else {
       FirebaseFirestore.instance.collection('posts').doc(widget.postId).update({
@@ -63,6 +85,7 @@ class _PostFormState extends State<PostForm> {
         'content': content,
         'type': _selectedType,
         'image': _image,
+        'likes': _favoriteCount,
       });
     }
 
@@ -77,6 +100,51 @@ class _PostFormState extends State<PostForm> {
         _image = bytes;
       });
     }
+  }
+
+  void _toggleFavorite() async {
+    if (widget.postId == null) return;
+
+    await _likeService.toggleFavorite(_isFavorited);
+    _updateFavoriteCountAndStatus();
+  }
+
+  void _scrollToComment() {
+    _scrollController
+        .animateTo(
+      _scrollController.position.maxScrollExtent,
+      duration: Duration(milliseconds: 300),
+      curve: Curves.easeInOut,
+    )
+        .then((value) {
+      FocusScope.of(context).requestFocus(_commentFocusNode);
+    });
+  }
+
+  void _showCustomSnackbar() {
+    final scaffoldMessenger = ScaffoldMessenger.of(context);
+    final snackbar = SnackBar(
+      content: Container(
+        width: double.infinity,
+        color: Color(0XFFFFDCB2),
+        padding: EdgeInsets.symmetric(vertical: 10),
+        child: Center(
+          child: Text(
+            '업로드되었습니다!',
+            style: TextStyle(color: Colors.black, fontSize: 16),
+          ),
+        ),
+      ),
+      behavior: SnackBarBehavior.floating,
+      backgroundColor: Color(0XFFFFDCB2),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(8),
+      ),
+      elevation: 0,
+      duration: Duration(seconds: 1),
+    );
+
+    scaffoldMessenger.showSnackBar(snackbar);
   }
 
   @override
@@ -101,7 +169,7 @@ class _PostFormState extends State<PostForm> {
           ),
         ),
         actions: [
-          TextButton(
+          OutlinedButton(
             child: Text(
               '완료',
               style: TextStyle(
@@ -134,7 +202,8 @@ class _PostFormState extends State<PostForm> {
                   backgroundColor: Colors.white,
                   selectedColor: const Color(0XFFFF9C27),
                   side: BorderSide(color: Color(0XFFFF9C27)),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8)),
                   selected: _selectedType == category,
                   onSelected: (selected) {
                     setState(() {
@@ -164,10 +233,7 @@ class _PostFormState extends State<PostForm> {
                   ),
                 ),
               ),
-              Divider(
-                thickness: 2,
-                color: Color(0XFFF2F3F5),
-              ),
+              Divider(thickness: 2, color: Color(0XFFF2F3F5)),
             ],
             TextField(
               controller: _titleController,
@@ -201,6 +267,45 @@ class _PostFormState extends State<PostForm> {
                 ),
               ),
               maxLines: null,
+            ),
+            SizedBox(height: 20),
+            Row(
+              children: [
+                IconButton(
+                  icon: Icon(
+                    _isFavorited ? Icons.favorite : Icons.favorite_border,
+                    color: _isFavorited ? Colors.red : Colors.black,
+                  ),
+                  onPressed: _toggleFavorite,
+                ),
+                StreamBuilder<int>(
+                  stream: _likeService.getFavoriteCount().asStream(),
+                  builder: (context, snapshot) {
+                    if (!snapshot.hasData) {
+                      return Text('0');
+                    }
+                    return Text('${snapshot.data}');
+                  },
+                ),
+                Spacer(),
+                StreamBuilder<int>(
+                  stream: _commentService.getCommentCount(),
+                  builder: (context, snapshot) {
+                    if (!snapshot.hasData) {
+                      return Text('0');
+                    }
+                    return Text('${snapshot.data}');
+                  },
+                ),
+                IconButton(
+                  icon: Icon(CupertinoIcons.chat_bubble_2),
+                  onPressed: _scrollToComment,
+                ),
+                IconButton(
+                  icon: Icon(Icons.bookmark_border),
+                  onPressed: () {},
+                ),
+              ],
             ),
           ],
         ),

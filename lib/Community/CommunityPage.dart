@@ -5,6 +5,8 @@ import 'CommunityTab.dart';
 import 'PostForm.dart';
 
 class CommunityPage extends StatefulWidget {
+  const CommunityPage({super.key});
+
   @override
   _CommunityPageState createState() => _CommunityPageState();
 }
@@ -27,6 +29,9 @@ class _CommunityPageState extends State<CommunityPage> {
       context: context,
       isDismissible: false,
       isScrollControlled: true,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(23),
+      ),
       builder: (BuildContext context) {
         return Container(
           height: 836,
@@ -72,9 +77,6 @@ class _CommunityPageState extends State<CommunityPage> {
       },
     );
   }
-
-
-
 
   @override
   Widget build(BuildContext context) {

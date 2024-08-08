@@ -200,7 +200,7 @@ class _CalendarState extends State<Calendar> {
                   return Container(
                     decoration: BoxDecoration(
                       image: const DecorationImage(
-                        image: AssetImage("assets/images.jpeg"),
+                        image: AssetImage("assets/images.png"),
                         fit: BoxFit.cover,
                       ),
                       shape: BoxShape.circle,
@@ -236,7 +236,10 @@ class _CalendarState extends State<Calendar> {
               ),
             ),
           ),
-          Image.asset('assets/아기 그림.png'),
+          Padding(
+            padding: EdgeInsets.fromLTRB(155, 0, 0, 27),
+            child: Image.asset('assets/엄마와 아기.png'),  
+          ),
         ],
       ),
     );

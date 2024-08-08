@@ -1,14 +1,11 @@
 import 'package:flutter/material.dart';
 import 'dart:async';
 import 'LogInPage.dart';
-
 class Splash1 extends StatefulWidget {
   const Splash1({super.key});
-
   @override
   State<Splash1> createState() => _Splash1State();
 }
-
 class _Splash1State extends State<Splash1> {
   @override
   void initState() {
@@ -18,7 +15,7 @@ class _Splash1State extends State<Splash1> {
         context,
         PageRouteBuilder(
           pageBuilder: (context, animation1, animation2) => StartPage(),
-          transitionDuration: Duration(milliseconds: 3000),
+          transitionDuration: Duration(milliseconds: 1000),
           transitionsBuilder: (context, animation, secondaryAnimation, child) {
             return FadeTransition(
               opacity: animation,
@@ -29,7 +26,6 @@ class _Splash1State extends State<Splash1> {
       );
     });
   }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -45,7 +41,6 @@ class _Splash1State extends State<Splash1> {
     );
   }
 }
-
 class StartPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -69,13 +64,10 @@ class StartPage extends StatelessWidget {
                     flex: 7,
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(20),
-                      child: Container(
-                        width: double.infinity,
-                        child: Image.asset(
-                          'assets/start1.png',
-                          fit: BoxFit.cover,
-                          alignment: Alignment(0.3, 0),
-                        ),
+                      child: Image.asset(
+                        'assets/start1.png',
+                        fit: BoxFit.cover,
+                        alignment: Alignment(0.3, 0),
                       ),
                     ),
                   ),
@@ -95,13 +87,10 @@ class StartPage extends StatelessWidget {
                     flex: 7,
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(20),
-                      child: Container(
-                        width: double.infinity,
-                        child: Image.asset(
-                          'assets/start3.png',
-                          fit: BoxFit.cover,
-                          alignment: Alignment(-0.3, 0),
-                        ),
+                      child: Image.asset(
+                        'assets/start3.png',
+                        fit: BoxFit.cover,
+                        alignment: Alignment(-0.3, 0),
                       ),
                     ),
                   ),
@@ -162,14 +151,4 @@ class StartPage extends StatelessWidget {
       ),
     );
   }
-}
-
-void main() {
-  runApp(MaterialApp(
-    home: Splash1(),
-    theme: ThemeData(
-      primarySwatch: Colors.orange,
-      visualDensity: VisualDensity.adaptivePlatformDensity,
-    ),
-  ));
 }

@@ -1,11 +1,56 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'likes.dart';
+import 'comments.dart';
 
-class PostDetailScreen extends StatelessWidget {
+class PostDetailScreen extends StatefulWidget {
   final String postId;
 
   PostDetailScreen({required this.postId});
+
+  @override
+  _PostDetailScreenState createState() => _PostDetailScreenState();
+}
+
+class _PostDetailScreenState extends State<PostDetailScreen> {
+  late LikeService _likeService;
+  late CommentService _commentService;
+  bool _isFavorited = false;
+  int _favoriteCount = 0;
+  final TextEditingController _commentController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    _likeService = LikeService(widget.postId, "현재 사용자 ID"); // 실제 사용자 ID로 대체해야 함
+    _commentService = CommentService(widget.postId);
+
+    _updateFavoriteCountAndStatus();
+  }
+
+  void _updateFavoriteCountAndStatus() async {
+    final likeCount = await _likeService.getFavoriteCount();
+    final isLiked = await _likeService.isFavorited();
+
+    setState(() {
+      _favoriteCount = likeCount;
+      _isFavorited = isLiked;
+    });
+  }
+
+  void _toggleFavorite() async {
+    await _likeService.toggleFavorite(_isFavorited);
+    _updateFavoriteCountAndStatus();
+  }
+
+  void _addComment() async {
+    final content = _commentController.text.trim();
+    if (content.isNotEmpty) {
+      await _commentService.addComment(content);
+      _commentController.clear();
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -30,7 +75,7 @@ class PostDetailScreen extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           StreamBuilder<DocumentSnapshot>(
-            stream: FirebaseFirestore.instance.collection('posts').doc(postId).snapshots(),
+            stream: FirebaseFirestore.instance.collection('posts').doc(widget.postId).snapshots(),
             builder: (context, snapshot) {
               if (snapshot.connectionState == ConnectionState.waiting) {
                 return Center(child: CircularProgressIndicator());
@@ -59,6 +104,19 @@ class PostDetailScreen extends StatelessWidget {
                         fontSize: 16,
                       ),
                     ),
+                    SizedBox(height: 10),
+                    Row(
+                      children: [
+                        IconButton(
+                          icon: Icon(
+                            _isFavorited ? Icons.favorite : Icons.favorite_border,
+                            color: _isFavorited ? Colors.red : Colors.black,
+                          ),
+                          onPressed: _toggleFavorite,
+                        ),
+                        Text('$_favoriteCount'),
+                      ],
+                    ),
                   ],
                 ),
               );
@@ -69,7 +127,7 @@ class PostDetailScreen extends StatelessWidget {
             child: StreamBuilder<QuerySnapshot>(
               stream: FirebaseFirestore.instance
                   .collection('posts')
-                  .doc(postId)
+                  .doc(widget.postId)
                   .collection('comments')
                   .snapshots(),
               builder: (context, snapshot) {
@@ -100,19 +158,25 @@ class PostDetailScreen extends StatelessWidget {
           ),
           Padding(
             padding: EdgeInsets.all(16.0),
-            child: TextField(
-              onSubmitted: (value) {
-                FirebaseFirestore.instance.collection('posts').doc(postId).collection('comments').add({
-                  'content': value,
-                  'createdAt': Timestamp.now(),
-                });
-              },
-              decoration: InputDecoration(
-                labelText: '답글을 작성하세요',
-                labelStyle: TextStyle(
-                  fontSize: 16,
+            child: Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _commentController,
+                    decoration: InputDecoration(
+                      labelText: '답글을 작성하세요',
+                      labelStyle: TextStyle(
+                        fontSize: 16,
+                      ),
+                    ),
+                    onSubmitted: (_) => _addComment(),
+                  ),
                 ),
-              ),
+                IconButton(
+                  icon: Icon(Icons.send),
+                  onPressed: _addComment,
+                ),
+              ],
             ),
           ),
         ],

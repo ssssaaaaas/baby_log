@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -8,14 +9,14 @@ import 'firestore_service.dart';
 class DiaryPage extends StatefulWidget {
   final DateTime date;
   final String? initialNote;
-  final Image? initialImage;  // Add this line
-  final void Function(Image? image, String note) onSave;
+  final Uint8List? initialImage;
+  final void Function(Uint8List? image, String note) onSave;
   final VoidCallback onDelete;
 
   DiaryPage({
     required this.date,
     this.initialNote,
-    this.initialImage,  // Add this line
+    this.initialImage,
     required this.onSave,
     required this.onDelete,
   });
@@ -25,7 +26,7 @@ class DiaryPage extends StatefulWidget {
 }
 
 class _DiaryPageState extends State<DiaryPage> {
-  Image? _image;
+  Uint8List? _image;
   late TextEditingController _noteController;
   final ImagePicker _picker = ImagePicker();
   final FirestoreService _firestoreService = FirestoreService();
@@ -36,32 +37,27 @@ class _DiaryPageState extends State<DiaryPage> {
   void initState() {
     super.initState();
     _noteController = TextEditingController(text: widget.initialNote);
-    _image = widget.initialImage;  // Initialize _image with widget.initialImage
+    _image = widget.initialImage;
   }
 
   Future<void> _pickImage() async {
     final pickedFile = await _picker.pickImage(source: ImageSource.gallery);
     if (pickedFile != null) {
+      final imageBytes = await pickedFile.readAsBytes();
       setState(() {
-        _image = Image.file(File(pickedFile.path));
+        _image = imageBytes;
       });
     }
   }
 
   Future<void> _save() async {
     final user = FirebaseAuth.instance.currentUser;
-    if (user == null) {
-      // Handle the case when user is not logged in
-      return;
-    }
-    final uid = user.uid;
-    await _firestoreService.saveUserData(uid, _noteController.text);
+    _showCustomSnackbar();
     widget.onSave(_image, _noteController.text);
     setState(() {
       _isSaved = true;
       _isEditing = false;
     });
-    _showCustomSnackbar();
   }
 
   void _startEditing() {
@@ -302,11 +298,20 @@ class _DiaryPageState extends State<DiaryPage> {
                         child: Stack(
                           children: [
                             if (_image != null)
-                              _image!,
+                              Image.memory(
+                                _image!,
+                                fit: BoxFit.cover,
+                                width: double.infinity,
+                                height: double.infinity,
+                              ),
                             Positioned(
                               bottom: 8,
                               right: 8,
-                              child: Icon(Icons.camera_alt_outlined, color: Colors.grey[600], size: 30),
+                              child: Icon(
+                                Icons.camera_alt_outlined,
+                                color: Colors.white,
+                                size: 30,
+                              ),
                             ),
                           ],
                         ),
