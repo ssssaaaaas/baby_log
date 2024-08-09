@@ -1,27 +1,28 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:table_calendar/table_calendar.dart';
-
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'DiaryPage.dart';
-
 class Calendar extends StatefulWidget {
   @override
   _CalendarState createState() => _CalendarState();
 }
-
 class _CalendarState extends State<Calendar> {
   DateTime? _selectedDate;
   DateTime _focusedDay = DateTime.now();
   late CalendarFormat _calendarFormat = CalendarFormat.month;
-
   Map<DateTime, Map<String, dynamic>> _dateEntries = {};
-
   @override
   void initState() {
     super.initState();
     _selectedDate = DateTime.now();
+    _loadDiaryEntries(); // 앱 시작 시 데이터 로드
   }
-
+  Future<void> _loadDiaryEntries() async {
+    final uid = 'user-id'; // FirebaseAuth.instance.currentUser?.uid;
+    _dateEntries = await loadDiaryEntries(uid);
+    setState(() {});
+  }
   void _onMonthChange(int direction) {
     setState(() {
       _focusedDay = DateTime(
@@ -29,13 +30,11 @@ class _CalendarState extends State<Calendar> {
         _focusedDay.month + direction,
         1,
       );
-
       if (_focusedDay.month > 12) {
         _focusedDay = DateTime(_focusedDay.year + 1, 1, 1);
       } else if (_focusedDay.month < 1) {
         _focusedDay = DateTime(_focusedDay.year - 1, 12, 1);
       }
-
       if (_selectedDate != null &&
           (_selectedDate!.month != _focusedDay.month ||
            _selectedDate!.year != _focusedDay.year)) {
@@ -43,19 +42,18 @@ class _CalendarState extends State<Calendar> {
       }
     });
   }
-
   void _selectDate(DateTime date) {
   Navigator.push(
     context,
     MaterialPageRoute(
       builder: (context) => DiaryPage(
         date: date,
-        initialImage: _dateEntries[date]?['image'],  // Pass the image here
+        initialImageUrl: _dateEntries[date]?['imageUrl'], // Firebase에서 가져온 이미지 URL
         initialNote: _dateEntries[date]?['note'],
-        onSave: (image, note) {
+        onSave: (imageUrl, note) {
           setState(() {
             _dateEntries[date] = {
-              'image': image,
+              'imageUrl': imageUrl,
               'note': note,
             };
           });
@@ -69,14 +67,11 @@ class _CalendarState extends State<Calendar> {
     ),
   );
 }
-
-
   @override
   Widget build(BuildContext context) {
     final DateFormat monthFormat = DateFormat('MMMM');
     final DateFormat yearFormat = DateFormat('yyyy');
     final DateFormat selectedDateFormat = DateFormat('yyyy.MM.dd');
-
     String formattedDay = _selectedDate != null
         ? DateFormat('d').format(_selectedDate!)
         : '';
@@ -89,7 +84,6 @@ class _CalendarState extends State<Calendar> {
     String formattedSelectedDate = _selectedDate != null
         ? selectedDateFormat.format(_selectedDate!)
         : '';
-
     return Scaffold(
       backgroundColor: Colors.white,
       body: Column(
@@ -238,10 +232,32 @@ class _CalendarState extends State<Calendar> {
           ),
           Padding(
             padding: EdgeInsets.fromLTRB(155, 0, 0, 27),
-            child: Image.asset('assets/엄마와 아기.png'),  
+            child: Image.asset('assets/엄마와 아기.png'),
           ),
         ],
       ),
     );
+  }
+}
+Future<Map<DateTime, Map<String, dynamic>>> loadDiaryEntries(String uid) async {
+  try {
+    final querySnapshot = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(uid)
+        .collection('entries')
+        .get();
+    final Map<DateTime, Map<String, dynamic>> entries = {};
+    for (var doc in querySnapshot.docs) {
+      final data = doc.data();
+      final date = DateTime.parse(doc.id);
+      entries[date] = {
+        'note': data['note'],
+        'imageUrl': data['imageUrl'],
+      };
+    }
+    return entries;
+  } catch (e) {
+    print('Error loading diary entries: $e');
+    return {};
   }
 }

@@ -1,5 +1,6 @@
 import 'dart:typed_data';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
@@ -9,8 +10,9 @@ import 'comments.dart';
 class PostForm extends StatefulWidget {
   final String? postId;
   final String? initialType;
+  final String currentUserId;
 
-  PostForm({this.postId, this.initialType});
+  PostForm({this.postId, this.initialType, required this.currentUserId});
 
   @override
   _PostFormState createState() => _PostFormState();
@@ -23,45 +25,66 @@ class _PostFormState extends State<PostForm> {
   final List<String> _categories = ['자유로그', '질문로그', '꿀팁로그', '자랑로그'];
   Uint8List? _image;
   bool _isFavorited = false;
-  int _favoriteCount = 0;
   final ScrollController _scrollController = ScrollController();
   final FocusNode _commentFocusNode = FocusNode();
 
   late LikeService _likeService;
   late CommentService _commentService;
+  late String _currentUserId;
 
   @override
   void initState() {
     super.initState();
+    _currentUserId = widget.currentUserId;
     if (widget.postId != null) {
-      _likeService = LikeService(widget.postId!, "현재 사용자 ID");
-      _commentService = CommentService(widget.postId!);
-
-      FirebaseFirestore.instance.collection('posts').doc(widget.postId).get().then((doc) {
-        _titleController.text = doc['title'];
-        _contentController.text = doc['content'];
-        _selectedType = doc['type'];
-        _updateFavoriteCountAndStatus();
-      });
+      _initializePost();
     } else {
       _selectedType = widget.initialType ?? _categories.first;
+      _titleController.text = '';
+      _contentController.text = '';
+      _initLikeAndCommentServices(null);
     }
   }
 
-  void _updateFavoriteCountAndStatus() async {
-    final likeCount = await _likeService.getFavoriteCount();
-    final isLiked = await _likeService.isFavorited();
+Future<void> _initializePost() async {
+    try {
+      final doc = await FirebaseFirestore.instance.collection('posts').doc(widget.postId!).get();
+      if (doc.exists) {
+        setState(() {
+          _titleController.text = doc['title'];
+          _contentController.text = doc['content'];
+          _selectedType = doc['type'];
+          _initLikeAndCommentServices(widget.postId!);
+          _updateFavoriteStatus();
+        });
+      } else {
+        print('Document does not exist.');
+      }
+    } catch (e) {
+      print("Error fetching post: $e");
+    }
+  }
 
-    setState(() {
-      _favoriteCount = likeCount;
-      _isFavorited = isLiked;
-    });
+  // ....
+  void _updateFavoriteStatus() async {
+    if (_likeService == null) return; // _likeService가 초기화되지 않은 경우 방지
+
+    final isLiked = await _likeService.isFavorited();
+    if (mounted) { // 위젯이 여전히 화면에 있는지 확인
+      setState(() {
+        _isFavorited = isLiked;
+      });
+    }
+  }
+
+  void _initLikeAndCommentServices(String? postId) {
+    _likeService = LikeService(postId!, _currentUserId);
+    _commentService = CommentService(postId);
   }
 
   void _savePost() {
     final title = _titleController.text;
     final content = _contentController.text;
-    _showCustomSnackbar();
 
     if (_selectedType == null || title.isEmpty || content.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -77,7 +100,15 @@ class _PostFormState extends State<PostForm> {
         'type': _selectedType,
         'createdAt': Timestamp.now(),
         'image': _image,
-        'likes': _favoriteCount,
+        'isFavorited': false,
+        'likes': 0,
+        'authorId': _currentUserId,
+      }).then((docRef) {
+        setState(() {
+          _likeService = LikeService(docRef.id, _currentUserId);
+          _commentService = CommentService(docRef.id);
+          _initLikeAndCommentServices(docRef.id);
+        });
       });
     } else {
       FirebaseFirestore.instance.collection('posts').doc(widget.postId).update({
@@ -85,7 +116,6 @@ class _PostFormState extends State<PostForm> {
         'content': content,
         'type': _selectedType,
         'image': _image,
-        'likes': _favoriteCount,
       });
     }
 
@@ -106,7 +136,7 @@ class _PostFormState extends State<PostForm> {
     if (widget.postId == null) return;
 
     await _likeService.toggleFavorite(_isFavorited);
-    _updateFavoriteCountAndStatus();
+    _updateFavoriteStatus();
   }
 
   void _scrollToComment() {
@@ -279,7 +309,7 @@ class _PostFormState extends State<PostForm> {
                   onPressed: _toggleFavorite,
                 ),
                 StreamBuilder<int>(
-                  stream: _likeService.getFavoriteCount().asStream(),
+                  stream: _likeService.getFavoriteCount(),
                   builder: (context, snapshot) {
                     if (!snapshot.hasData) {
                       return Text('0');
@@ -287,7 +317,6 @@ class _PostFormState extends State<PostForm> {
                     return Text('${snapshot.data}');
                   },
                 ),
-                Spacer(),
                 StreamBuilder<int>(
                   stream: _commentService.getCommentCount(),
                   builder: (context, snapshot) {

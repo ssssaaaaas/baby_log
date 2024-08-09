@@ -1,22 +1,23 @@
-import 'dart:io';
-import 'dart:typed_data';
 import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:intl/intl.dart';
+import 'dart:typed_data';
+import 'UploadImage.dart';
 import 'firestore_service.dart';
 
 class DiaryPage extends StatefulWidget {
   final DateTime date;
   final String? initialNote;
-  final Uint8List? initialImage;
-  final void Function(Uint8List? image, String note) onSave;
+  final String? initialImageUrl;
+  final void Function(String? imageUrl, String note) onSave;
   final VoidCallback onDelete;
 
   DiaryPage({
     required this.date,
     this.initialNote,
-    this.initialImage,
+    this.initialImageUrl,
     required this.onSave,
     required this.onDelete,
   });
@@ -26,38 +27,106 @@ class DiaryPage extends StatefulWidget {
 }
 
 class _DiaryPageState extends State<DiaryPage> {
-  Uint8List? _image;
   late TextEditingController _noteController;
-  final ImagePicker _picker = ImagePicker();
   final FirestoreService _firestoreService = FirestoreService();
   bool _isSaved = false;
   bool _isEditing = false;
+  Uint8List? _imageBytes;
+  String? _imageUrl;
 
   @override
   void initState() {
     super.initState();
     _noteController = TextEditingController(text: widget.initialNote);
-    _image = widget.initialImage;
+    _imageUrl = widget.initialImageUrl;
+    _loadDiaryEntry();
   }
 
-  Future<void> _pickImage() async {
-    final pickedFile = await _picker.pickImage(source: ImageSource.gallery);
-    if (pickedFile != null) {
-      final imageBytes = await pickedFile.readAsBytes();
-      setState(() {
-        _image = imageBytes;
-      });
+  @override
+  void dispose() {
+    _noteController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadDiaryEntry() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('로그인 상태가 아닙니다.')),
+      );
+      return;
     }
+    try {
+      final diaryEntry =
+          await _firestoreService.getDiaryEntry(user.uid, widget.date);
+      if (diaryEntry != null) {
+        setState(() {
+          _noteController.text = diaryEntry.note ?? '';
+          _imageUrl = diaryEntry.imageUrl;
+        });
+      } else {
+        print('No diary entry found for this date.');
+      }
+    } catch (e) {
+      print('Failed to load diary entry: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('다이어리를 불러오는 데 실패했습니다.')),
+      );
+    }
+  }
+
+  void _handleImagePick(Uint8List? imageBytes) {
+    setState(() {
+      _imageBytes = imageBytes;
+    });
   }
 
   Future<void> _save() async {
     final user = FirebaseAuth.instance.currentUser;
-    _showCustomSnackbar();
-    widget.onSave(_image, _noteController.text);
-    setState(() {
-      _isSaved = true;
-      _isEditing = false;
-    });
+    if (user == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('로그인 상태가 아닙니다.')),
+      );
+      return;
+    }
+
+    String? imageUrl;
+    if (_imageBytes != null) {
+      final fileName = '${widget.date.toIso8601String()}_${DateTime.now().millisecondsSinceEpoch}.jpg';
+      try {
+        final storageRef = FirebaseStorage.instance.ref().child('images').child(fileName);
+        final uploadTask = storageRef.putData(_imageBytes!);
+        final snapshot = await uploadTask.whenComplete(() {});
+        imageUrl = await snapshot.ref.getDownloadURL();
+      } catch (e) {
+        print('Failed to upload image: $e');
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('이미지 업로드 실패')),
+        );
+        return;
+      }
+    }
+
+    try {
+      await _firestoreService.saveDiaryEntry(
+        user.uid,
+        widget.date,
+        _noteController.text,
+        imageUrl ?? _imageUrl,
+      );
+      _showCustomSnackbar();
+      widget.onSave(imageUrl ?? _imageUrl, _noteController.text);
+      setState(() {
+        _isSaved = true;
+        _isEditing = false;
+        _imageUrl = imageUrl ?? _imageUrl;
+      });
+    } catch (e) {
+      print('Failed to save diary entry: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('다이어리 저장 실패')),
+      );
+    }
   }
 
   void _startEditing() {
@@ -95,7 +164,7 @@ class _DiaryPageState extends State<DiaryPage> {
                 text: '삭제',
                 onTap: () {
                   Navigator.pop(context);
-                  _showDeleteConfirmationDialog();
+                  _showDeleteDialog();
                 },
               ),
               Divider(color: Color(0XFFEEE5DA)),
@@ -153,7 +222,7 @@ class _DiaryPageState extends State<DiaryPage> {
     );
   }
 
-  void _showDeleteConfirmationDialog() {
+  void _showDeleteDialog() {
     showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -213,7 +282,6 @@ class _DiaryPageState extends State<DiaryPage> {
       elevation: 0,
       duration: Duration(seconds: 1),
     );
-
     scaffoldMessenger.showSnackBar(snackbar);
   }
 
@@ -254,7 +322,7 @@ class _DiaryPageState extends State<DiaryPage> {
                 child: Row(
                   children: [
                     Text(
-                      '${DateFormat('d ').format(widget.date)}',
+                      '${DateFormat('d').format(widget.date)}',
                       style: TextStyle(fontSize: 30, fontWeight: FontWeight.w700),
                     ),
                     Text(
@@ -290,31 +358,29 @@ class _DiaryPageState extends State<DiaryPage> {
                       maxLines: null,
                     ),
                     SizedBox(height: 10),
-                    GestureDetector(
-                      onTap: _pickImage,
-                      child: Container(
-                        height: 200,
-                        color: Colors.grey[200],
-                        child: Stack(
-                          children: [
-                            if (_image != null)
-                              Image.memory(
-                                _image!,
-                                fit: BoxFit.cover,
-                                width: double.infinity,
-                                height: double.infinity,
-                              ),
-                            Positioned(
-                              bottom: 8,
-                              right: 8,
-                              child: Icon(
-                                Icons.camera_alt_outlined,
-                                color: Colors.white,
-                                size: 30,
-                              ),
+                    Container(
+                      height: 200,
+                      width: double.infinity,
+                      color: Colors.grey[200],
+                      child: Stack(
+                        fit: StackFit.expand,
+                        children: [
+                          if (_imageBytes != null)
+                            Image.memory(
+                              _imageBytes!,
+                              fit: BoxFit.cover,
+                            )
+                          else if (_imageUrl != null)
+                            Image.network(
+                              _imageUrl!,
+                              fit: BoxFit.cover,
                             ),
-                          ],
-                        ),
+                          Positioned(
+                            bottom: 8,
+                            right: 8,
+                            child: UploadImage(onPickImage: _handleImagePick),
+                          ),
+                        ],
                       ),
                     ),
                   ],

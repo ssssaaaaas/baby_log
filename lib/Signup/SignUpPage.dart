@@ -2,11 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'SignUpPage2.dart'; // Import the new page
+
 class SignUpPage extends StatefulWidget {
   const SignUpPage({Key? key}) : super(key: key);
   @override
   _SignupPageState createState() => _SignupPageState();
 }
+
 class _SignupPageState extends State<SignUpPage> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
@@ -40,6 +42,7 @@ class _SignupPageState extends State<SignUpPage> {
       );
     }
   }
+
   Future<void> _verifyEmail() async {
     try {
       User? user = _auth.currentUser;
@@ -79,6 +82,7 @@ class _SignupPageState extends State<SignUpPage> {
       );
     }
   }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(

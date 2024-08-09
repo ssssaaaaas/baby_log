@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'likes.dart';
@@ -16,32 +17,40 @@ class PostDetailScreen extends StatefulWidget {
 class _PostDetailScreenState extends State<PostDetailScreen> {
   late LikeService _likeService;
   late CommentService _commentService;
+  late String _currentUserId;
   bool _isFavorited = false;
-  int _favoriteCount = 0;
   final TextEditingController _commentController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
-    _likeService = LikeService(widget.postId, "현재 사용자 ID"); // 실제 사용자 ID로 대체해야 함
-    _commentService = CommentService(widget.postId);
+    User? user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      _currentUserId = user.uid;
 
-    _updateFavoriteCountAndStatus();
+      // LikeService와 CommentService를 초기화합니다.
+      _likeService = LikeService(widget.postId, _currentUserId);
+      _commentService = CommentService(widget.postId);
+
+      // 좋아요 상태를 업데이트합니다.
+      _updateFavoriteStatus();
+    } else {
+      // 사용자가 로그인하지 않았을 때의 처리
+      print("사용자가 로그인하지 않았습니다.");
+    }
   }
 
-  void _updateFavoriteCountAndStatus() async {
-    final likeCount = await _likeService.getFavoriteCount();
+  Future<void> _updateFavoriteStatus() async {
     final isLiked = await _likeService.isFavorited();
 
     setState(() {
-      _favoriteCount = likeCount;
       _isFavorited = isLiked;
     });
   }
 
   void _toggleFavorite() async {
     await _likeService.toggleFavorite(_isFavorited);
-    _updateFavoriteCountAndStatus();
+    _updateFavoriteStatus();
   }
 
   void _addComment() async {
@@ -53,134 +62,148 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
   }
 
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        leading: IconButton(
-          onPressed: () {
-            Navigator.pop(context, 'fromPostDetailScreen');
-          },
-          icon: Icon(Icons.arrow_back_ios, color: Color(0XFF1C1B1F)),
-        ),
-        actions: [
-          IconButton(
-            icon: Icon(CupertinoIcons.ellipsis_vertical),
-            onPressed: () {},
-          ),
-        ],
-      ),
+Widget build(BuildContext context) {
+  return Scaffold(
+    appBar: AppBar(
       backgroundColor: Colors.white,
-      body: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          StreamBuilder<DocumentSnapshot>(
-            stream: FirebaseFirestore.instance.collection('posts').doc(widget.postId).snapshots(),
+      leading: IconButton(
+        onPressed: () {
+          Navigator.pop(context, 'fromPostDetailScreen');
+        },
+        icon: Icon(Icons.arrow_back_ios, color: Color(0XFF1C1B1F)),
+      ),
+      actions: [
+        IconButton(
+          icon: Icon(CupertinoIcons.ellipsis_vertical),
+          onPressed: () {},
+        ),
+      ],
+    ),
+    backgroundColor: Colors.white,
+    body: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        StreamBuilder<DocumentSnapshot>(
+          stream: FirebaseFirestore.instance.collection('posts').doc(widget.postId).snapshots(),
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return Center(child: CircularProgressIndicator());
+            }
+            if (!snapshot.hasData) {
+              return Center(child: Text('게시글이 없습니다.'));
+            }
+
+            final post = snapshot.data!;
+            return Padding(
+              padding: EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    post['title'],
+                    style: TextStyle(
+                      fontSize: 21,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  SizedBox(height: 10),
+                  Text(
+                    post['content'],
+                    style: TextStyle(
+                      fontSize: 16,
+                    ),
+                  ),
+                  SizedBox(height: 10),
+                  Row(
+                    children: [
+                      IconButton(
+                        icon: Icon(
+                          _isFavorited ? Icons.favorite : Icons.favorite_border,
+                          color: _isFavorited ? Colors.red : Colors.black,
+                        ),
+                        onPressed: _toggleFavorite,
+                      ),
+                      StreamBuilder<int>(
+                        stream: _likeService.getFavoriteCount(),
+                        builder: (context, snapshot) {
+                          if (!snapshot.hasData) {
+                            return Text('0');
+                          }
+                          return Text('${snapshot.data}');
+                        },
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            );
+          },
+        ),
+        Divider(thickness: 2, color: Color(0XFFF2F3F5)),
+        Expanded(
+          child: StreamBuilder<QuerySnapshot>(
+            stream: _commentService.getComments(),
             builder: (context, snapshot) {
               if (snapshot.connectionState == ConnectionState.waiting) {
                 return Center(child: CircularProgressIndicator());
               }
-              if (!snapshot.hasData) {
-                return Center(child: Text('게시글이 없습니다.'));
+              if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                return Center(child: Text('답글이 없습니다.'));
               }
 
-              final post = snapshot.data!;
-              return Padding(
-                padding: EdgeInsets.all(16.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      post['title'],
-                      style: TextStyle(
-                        fontSize: 21,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    SizedBox(height: 10),
-                    Text(
-                      post['content'],
+              final comments = snapshot.data!.docs;
+              return ListView.builder(
+                itemCount: comments.length,
+                itemBuilder: (context, index) {
+                  final comment = comments[index];
+                  return ListTile(
+                    title: Text(
+                      comment['content'],
                       style: TextStyle(
                         fontSize: 16,
                       ),
                     ),
-                    SizedBox(height: 10),
-                    Row(
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
                       children: [
                         IconButton(
-                          icon: Icon(
-                            _isFavorited ? Icons.favorite : Icons.favorite_border,
-                            color: _isFavorited ? Colors.red : Colors.black,
-                          ),
-                          onPressed: _toggleFavorite,
+                          icon: Icon(Icons.thumb_up),
+                          onPressed: () => _commentService.likeComment(comment.id),
                         ),
-                        Text('$_favoriteCount'),
+                        Text('${comment['likesCount']}'),
                       ],
                     ),
-                  ],
-                ),
+                  );
+                },
               );
             },
           ),
-          Divider(thickness: 2, color: Color(0XFFF2F3F5)),
-          Expanded(
-            child: StreamBuilder<QuerySnapshot>(
-              stream: FirebaseFirestore.instance
-                  .collection('posts')
-                  .doc(widget.postId)
-                  .collection('comments')
-                  .snapshots(),
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return Center(child: CircularProgressIndicator());
-                }
-                if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                  return Center(child: Text('답글이 없습니다.'));
-                }
-
-                final comments = snapshot.data!.docs;
-                return ListView.builder(
-                  itemCount: comments.length,
-                  itemBuilder: (context, index) {
-                    final comment = comments[index];
-                    return ListTile(
-                      title: Text(
-                        comment['content'],
-                        style: TextStyle(
-                          fontSize: 16,
-                        ),
-                      ),
-                    );
-                  },
-                );
-              },
-            ),
-          ),
-          Padding(
-            padding: EdgeInsets.all(16.0),
-            child: Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _commentController,
-                    decoration: InputDecoration(
-                      labelText: '답글을 작성하세요',
-                      labelStyle: TextStyle(
-                        fontSize: 16,
-                      ),
+        ),
+        Padding(
+          padding: EdgeInsets.all(16.0),
+          child: Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _commentController,
+                  decoration: InputDecoration(
+                    labelText: '답글을 작성하세요',
+                    labelStyle: TextStyle(
+                      fontSize: 16,
                     ),
-                    onSubmitted: (_) => _addComment(),
                   ),
+                  onSubmitted: (_) => _addComment(),
                 ),
-                IconButton(
-                  icon: Icon(Icons.send),
-                  onPressed: _addComment,
-                ),
-              ],
-            ),
+              ),
+              IconButton(
+                icon: Icon(Icons.send),
+                onPressed: _addComment,
+              ),
+            ],
           ),
-        ],
-      ),
-    );
-  }
+        ),
+      ],
+    ),
+  );
+ }
 }

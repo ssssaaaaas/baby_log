@@ -1,19 +1,23 @@
+import 'Pregnant.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+
 class SignUpPage2 extends StatefulWidget {
   const SignUpPage2({Key? key}) : super(key: key);
+
   @override
   _SignUpPage2State createState() => _SignUpPage2State();
 }
+
 class _SignUpPage2State extends State<SignUpPage2> {
   final TextEditingController _nickNameController = TextEditingController();
   final TextEditingController _genderController = TextEditingController();
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   String _selectedIcon = '';
+
   Future<void> _saveAdditionalInfo() async {
-    // 입력 필드가 비어 있는지 확인
     if (_nickNameController.text.trim().isEmpty ||
         _genderController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -24,6 +28,7 @@ class _SignUpPage2State extends State<SignUpPage2> {
       );
       return;
     }
+
     try {
       User? user = _auth.currentUser;
       if (user != null) {
@@ -31,6 +36,8 @@ class _SignUpPage2State extends State<SignUpPage2> {
           'nickName': _nickNameController.text.trim(),
           'gender': _genderController.text.trim(),
           'status': _selectedIcon,
+          'nickname': _selectedIcon == '임신 중이에요' ? null : 'default',
+          'dueDate': _selectedIcon == '임신 중이에요' ? null : 'default',
         });
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -38,7 +45,13 @@ class _SignUpPage2State extends State<SignUpPage2> {
             duration: Duration(milliseconds: 500),
           ),
         );
-        // 저장 후 다른 화면으로 이동하는 코드 추가
+
+        if (_selectedIcon == '임신 중이에요') {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => PregnantPage()),
+          );
+        }
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -57,6 +70,7 @@ class _SignUpPage2State extends State<SignUpPage2> {
       );
     }
   }
+
   Widget _buildIcon(String label, IconData iconData) {
     return GestureDetector(
       onTap: () {
@@ -85,6 +99,7 @@ class _SignUpPage2State extends State<SignUpPage2> {
       ),
     );
   }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(

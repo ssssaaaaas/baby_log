@@ -14,7 +14,7 @@ class navigationBar extends StatefulWidget {
 
 class _navigationBarState extends State<navigationBar> {
   int _selectedIndex = 0;
-
+ 
   final List<Widget> _widgetOptions = <Widget>[
     const HomePage(),
     CommunityPage(),
@@ -58,29 +58,25 @@ class _navigationBarState extends State<navigationBar> {
             data: Theme.of(context).copyWith(
               splashFactory: NoSplash.splashFactory,
               highlightColor: Colors.transparent,
+            
             ),
             child: BottomNavigationBar(
-              backgroundColor: Colors.white,
-              type: BottomNavigationBarType.fixed,
-              unselectedFontSize: 10,
-              selectedFontSize: 10,
-              unselectedLabelStyle:
-                  const TextStyle(fontWeight: FontWeight.bold),
-              selectedLabelStyle: const TextStyle(fontWeight: FontWeight.bold),
-              items: const [
-                BottomNavigationBarItem(
-                    icon: Icon(Icons.home_filled), label: '홈'),
-                BottomNavigationBarItem(
-                    icon: Icon(Icons.forum_outlined), label: '커뮤니티'),
-                BottomNavigationBarItem(
-                    icon: Icon(Symbols.child_care), label: '기록'),
-                BottomNavigationBarItem(
-                    icon: Icon(Icons.person_2_outlined), label: '마이페이지')
-              ],
-              currentIndex: _selectedIndex,
-              unselectedItemColor: const Color(0XFFB1B8C0),
-              selectedItemColor: const Color(0XFFFF9C27),
-              onTap: _onItemTapped,
+            backgroundColor: Colors.white,
+            type: BottomNavigationBarType.fixed,
+            unselectedFontSize: 10,
+            selectedFontSize: 10,
+            unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.bold),
+            selectedLabelStyle: const TextStyle(fontWeight: FontWeight.bold),
+            items: const [
+              BottomNavigationBarItem(icon: Icon(Icons.home_filled), label: '홈'),
+              BottomNavigationBarItem(icon: Icon(Icons.forum_outlined), label: '커뮤니티'),
+              BottomNavigationBarItem(icon: Icon(Symbols.child_care), label: '기록'),
+              BottomNavigationBarItem(icon: Icon(Icons.person_2_outlined), label: '마이페이지')
+            ],
+            currentIndex: _selectedIndex,
+            unselectedItemColor: const Color(0XFFB1B8C0),
+            selectedItemColor: const Color(0XFFFF9C27),
+            onTap: _onItemTapped,
             ),
           ),
         ),

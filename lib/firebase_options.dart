@@ -23,9 +23,15 @@ class DefaultFirebaseOptions {
       case TargetPlatform.android:
         return android;
       case TargetPlatform.iOS:
-        return ios;
+        throw UnsupportedError(
+          'DefaultFirebaseOptions have not been configured for ios - '
+          'you can reconfigure this by running the FlutterFire CLI again.',
+        );
       case TargetPlatform.macOS:
-        return macos;
+        throw UnsupportedError(
+          'DefaultFirebaseOptions have not been configured for macos - '
+          'you can reconfigure this by running the FlutterFire CLI again.',
+        );
       case TargetPlatform.windows:
         return windows;
       case TargetPlatform.linux:
@@ -66,21 +72,4 @@ class DefaultFirebaseOptions {
     storageBucket: 'babylog-67ad6.appspot.com',
   );
 
-  static const FirebaseOptions macos = FirebaseOptions(
-    apiKey: 'AIzaSyCtOwUTJbmmQuJ0fKRMvkVjCR_AeHX_4oY',
-    appId: '1:521816597990:ios:c049b506bcfc95ddfa2227',
-    messagingSenderId: '521816597990',
-    projectId: 'babylog-67ad6',
-    storageBucket: 'babylog-67ad6.appspot.com',
-    iosBundleId: 'com.example.babyLog',
-  );
-
-  static const FirebaseOptions ios = FirebaseOptions(
-    apiKey: 'AIzaSyCtOwUTJbmmQuJ0fKRMvkVjCR_AeHX_4oY',
-    appId: '1:521816597990:ios:c049b506bcfc95ddfa2227',
-    messagingSenderId: '521816597990',
-    projectId: 'babylog-67ad6',
-    storageBucket: 'babylog-67ad6.appspot.com',
-    iosBundleId: 'com.example.babyLog',
-  );
 }

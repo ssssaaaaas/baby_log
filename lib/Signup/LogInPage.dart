@@ -3,16 +3,35 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'SignUpPage.dart';
 import '../navigationBar.dart';
+
 class LoginPage extends StatefulWidget {
   const LoginPage({Key? key}) : super(key: key);
   @override
   _LoginPageState createState() => _LoginPageState();
 }
+
 class _LoginPageState extends State<LoginPage> {
   final TextEditingController _idController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+
+  bool _isButtonActive = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _idController.addListener(_updateButtonState);
+    _passwordController.addListener(_updateButtonState);
+  }
+
+  void _updateButtonState() {
+    setState(() {
+      _isButtonActive =
+          _idController.text.isNotEmpty && _passwordController.text.isNotEmpty;
+    });
+  }
+
   Future<String?> _getEmailById(String id) async {
     try {
       QuerySnapshot snapshot = await _firestore
@@ -28,6 +47,7 @@ class _LoginPageState extends State<LoginPage> {
     }
     return null;
   }
+
   Future<void> _login() async {
     try {
       String? email = await _getEmailById(_idController.text.trim());
@@ -36,7 +56,6 @@ class _LoginPageState extends State<LoginPage> {
           email: email,
           password: _passwordController.text.trim(),
         );
-        // 로그인 성공 후 NavigationBar로 이동
         print("로그인 성공: ${userCredential.user?.email}");
         Navigator.pushReplacement(
           context,
@@ -51,19 +70,27 @@ class _LoginPageState extends State<LoginPage> {
         );
       }
     } on FirebaseAuthException catch (e) {
-      // FirebaseAuthException 처리
       debugPrint("로그인 실패: ${e.message}");
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('로그인 실패: ${e.message}')),
       );
     } catch (e) {
-      // 일반 예외 처리
       debugPrint("로그인 실패: $e");
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('로그인 실패: ${e.toString()}')),
       );
     }
   }
+
+  @override
+  void dispose() {
+    _idController.removeListener(_updateButtonState);
+    _passwordController.removeListener(_updateButtonState);
+    _idController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -206,9 +233,11 @@ class _LoginPageState extends State<LoginPage> {
                     width: 375,
                     height: 64,
                     child: ElevatedButton(
-                      onPressed: _login,
+                      onPressed: _isButtonActive ? _login : null,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFFFFBC6B),
+                        backgroundColor: _isButtonActive
+                            ? const Color(0XFFFF9C27)
+                            : const Color(0XFFFFBC6B),
                         padding: const EdgeInsets.symmetric(
                           horizontal: 50.0,
                           vertical: 15.0,
@@ -216,22 +245,25 @@ class _LoginPageState extends State<LoginPage> {
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(4.0),
                         ),
-                        shadowColor: const Color(0x3FFFAB47),
-                        elevation: 8.0,
+                        /*shadowColor: _isButtonActive
+                            ? Colors.transparent
+                            : Color(0x3FFFAB47),*/
+                        elevation: _isButtonActive ? 8.0 : 0.0,
                       ),
-                      child: const Text(
+                      child: Text(
                         '시작하기',
                         style: TextStyle(
                           fontSize: 20.0,
                           fontFamily: 'Pretendard Variable',
                           fontWeight: FontWeight.w700,
-                          color: Color(0xFFFFDFBB),
+                          color: _isButtonActive
+                              ? Colors.white
+                              : const Color(0xFFFFDFBB),
                         ),
                       ),
                     ),
                   ),
                 ),
-                //const SizedBox(height: 8.0),
                 TextButton(
                     onPressed: () {
                       Navigator.push(

@@ -1,16 +1,22 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/symbols.dart';
-import 'likes.dart';  // 좋아요 기능을 위한 파일
-import 'comments.dart';  // 댓글 기능을 위한 파일
+import 'likes.dart';
+import 'comments.dart';
 import 'PostDetailScreen.dart';
 
-class CommunityTab extends StatelessWidget {
+class CommunityTab extends StatefulWidget {
   final String tabType;
 
   CommunityTab({required this.tabType});
 
+  @override
+  State<CommunityTab> createState() => _CommunityTabState();
+}
+
+class _CommunityTabState extends State<CommunityTab> {
   Stream<int> _getCommentCount(String postId) {
     return FirebaseFirestore.instance
         .collection('posts')
@@ -20,20 +26,41 @@ class CommunityTab extends StatelessWidget {
         .map((snapshot) => snapshot.docs.length);
   }
 
-  Future<void> _toggleFavorite(DocumentSnapshot post) async {
-    final postId = post.id;
-    final likes = post['likes'] ?? 0;
-    final isFavorited = post['isFavorited'] ?? false; // 필드가 없을 경우 false로 처리
+  Stream<int> _getFavoriteCount(String postId) {
+    return FirebaseFirestore.instance
+        .collection('posts')
+        .doc(postId)
+        .snapshots()
+        .map((snapshot) => snapshot['likes'] ?? 0);
+  }
 
-    final likeService = LikeService(postId, "현재 사용자 ID"); // 실제 사용자 ID로 대체해야 함
+  Future<void> _toggleFavorite(String postId, bool isFavorited) async {
+    final postRef = FirebaseFirestore.instance.collection('posts').doc(postId);
 
-    await likeService.toggleFavorite(isFavorited);
+    // Firestore 트랜잭션 사용
+    await FirebaseFirestore.instance.runTransaction((transaction) async {
+      final postSnapshot = await transaction.get(postRef);
 
-    // 최신 데이터로 업데이트
-    final updatedLikes = await likeService.getFavoriteCount();
-    FirebaseFirestore.instance.collection('posts').doc(postId).update({
-      'likes': updatedLikes,
-      'isFavorited': !isFavorited,
+      if (!postSnapshot.exists) {
+        throw Exception("Post does not exist!");
+      }
+
+      final currentFavoriteCount = postSnapshot.data()?['likes'] ?? 0;
+      final currentIsFavorited = postSnapshot.data()?['isFavorited'] ?? false;
+
+      if (currentIsFavorited) {
+        // 현재 좋아요가 눌린 상태일 때
+        await transaction.update(postRef, {
+          'isFavorited': false,
+          'likes': currentFavoriteCount - 1,
+        });
+      } else {
+        // 현재 좋아요가 눌리지 않은 상태일 때
+        await transaction.update(postRef, {
+          'isFavorited': true,
+          'likes': currentFavoriteCount + 1,
+        });
+      }
     });
   }
 
@@ -42,7 +69,7 @@ class CommunityTab extends StatelessWidget {
     return StreamBuilder<QuerySnapshot>(
       stream: FirebaseFirestore.instance
           .collection('posts')
-          .where('type', isEqualTo: tabType)
+          .where('type', isEqualTo: widget.tabType)
           .snapshots(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
@@ -55,15 +82,18 @@ class CommunityTab extends StatelessWidget {
         final posts = snapshot.data!.docs;
         return ListView.separated(
           itemCount: posts.length,
-          separatorBuilder: (context, index) => Divider(thickness: 2, color: Color(0XFFF2F3F5)),
+          separatorBuilder: (context, index) =>
+              Divider(thickness: 2, color: Color(0XFFF2F3F5)),
           itemBuilder: (context, index) {
             final post = posts[index];
+            final postId = post.id;
+
             return GestureDetector(
               onTap: () {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (context) => PostDetailScreen(postId: post.id),
+                    builder: (context) => PostDetailScreen(postId: postId),
                   ),
                 );
               },
@@ -84,7 +114,7 @@ class CommunityTab extends StatelessWidget {
                     Text(
                       post['content'],
                       maxLines: 1,
-                      overflow: TextOverflow.ellipsis, // 넘칠 경우 '...' 표시
+                      overflow: TextOverflow.ellipsis,
                       style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w400,
@@ -94,7 +124,7 @@ class CommunityTab extends StatelessWidget {
                     Row(
                       children: [
                         StreamBuilder<int>(
-                          stream: _getCommentCount(post.id),
+                          stream: _getCommentCount(postId),
                           builder: (context, snapshot) {
                             if (!snapshot.hasData) {
                               return Row(
@@ -114,30 +144,46 @@ class CommunityTab extends StatelessWidget {
                             );
                           },
                         ),
-                        SizedBox(width: 16), // 아이콘 간격 추가
-                        FutureBuilder<bool>(
-                          future: LikeService(post.id, "현재 사용자 ID").isFavorited(),
+                        SizedBox(width: 16),
+                        StreamBuilder<DocumentSnapshot>(
+                          stream: FirebaseFirestore.instance
+                              .collection('posts')
+                              .doc(postId)
+                              .snapshots(),
                           builder: (context, snapshot) {
                             if (!snapshot.hasData) {
-                              return Icon(Icons.favorite_border);
+                              return Row(
+                                children: [
+                                  Icon(Icons.favorite_border),
+                                  SizedBox(width: 4),
+                                  Text('0'),
+                                ],
+                              );
                             }
-                            final isFavorited = snapshot.data!;
-                            return IconButton(
-                              icon: Icon(
-                                isFavorited ? Icons.favorite : Icons.favorite_border,
-                                color: isFavorited ? Colors.red : Colors.black,
-                              ),
-                              onPressed: () => _toggleFavorite(post),
+                            final post = snapshot.data!;
+                            final isFavorited =
+                                post['isFavorited'] ?? false;
+                            final favoriteCount = post['likes'] ?? 0;
+
+                            return Row(
+                              children: [
+                                IconButton(
+                                  icon: Icon(
+                                    isFavorited
+                                        ? Icons.favorite
+                                        : Icons.favorite_border,
+                                    color: isFavorited
+                                        ? Colors.red
+                                        : Colors.black,
+                                  ),
+                                  onPressed: () async {
+                                    await _toggleFavorite(postId, isFavorited);
+                                  },
+                                ),
+                                SizedBox(width: 4),
+                                Text('$favoriteCount'),
+                              ],
                             );
-                          },
-                        ),
-                        FutureBuilder<int>(
-                          future: LikeService(post.id, "현재 사용자 ID").getFavoriteCount(),
-                          builder: (context, snapshot) {
-                            if (!snapshot.hasData) {
-                              return Text('0');
-                            }
-                            return Text('${snapshot.data}');
                           },
                         ),
                       ],

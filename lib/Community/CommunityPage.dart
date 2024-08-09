@@ -1,3 +1,4 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/symbols.dart';
@@ -13,10 +14,12 @@ class CommunityPage extends StatefulWidget {
 
 class _CommunityPageState extends State<CommunityPage> {
   bool _showBottomSheet = true;
+  late String _currentUserId;
   
   @override
   void initState() {
     super.initState();
+    _currentUserId = FirebaseAuth.instance.currentUser?.uid ?? '';
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_showBottomSheet) {
         _showRulesBottomSheet(context);
@@ -121,7 +124,10 @@ class _CommunityPageState extends State<CommunityPage> {
           onPressed: () async {
             final result = await Navigator.push(
               context,
-              MaterialPageRoute(builder: (context) => PostForm()),
+              MaterialPageRoute(builder: (context) => PostForm(postId: "iV2Z1YOEiTHoEVjX154F",
+                  // 현재 사용자 ID를 전달합니다.
+                  initialType: '자유로그', // 여기서 초기 유형을 적절히 설정하세요.
+                  currentUserId: _currentUserId,)),
             );
             if (result == 'fromPostForm') {
               setState(() {
